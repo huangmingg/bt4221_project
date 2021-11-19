@@ -1,0 +1,38 @@
+from typing import Tuple
+import numpy as np
+import os
+import pandas as pd
+
+
+def parse_input_file(df_filepath: os.path, img_directory: os.path) -> pd.DataFrame:
+    df = pd.read_table(df_filepath, skiprows=1, delim_whitespace=True)
+    df['image_name'] = df['image_name'].apply(lambda x: os.path.join(img_directory, x.split('/')[1], x.split('/')[2]))
+    df.columns = ['filename', 'class']
+    df['class'] = df['class'].astype(str)
+    return df
+
+
+def train_val_test_split(df: pd.DataFrame, label: str='class', val_size: float=0.2, test_size: float=0.2, stratify: bool=True) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    if val_size + test_size >= 1:
+        print("invalid parameters")
+        return
+    train_size = 1 - val_size - test_size
+    if not stratify:
+        indices = np.array(df.index)
+        c = len(indices)
+        np.random.shuffle(indices)
+        fti, sti = int(train_size*c), int((train_size+val_size)*c)
+        train_idx, val_idx, test_idx = indices[:fti], indices[fti: sti], indices[sti:]
+        return df.iloc[train_idx], df.iloc[val_idx], df.iloc[test_idx]
+
+    else:
+        for l in df[label].value_counts().index.tolist():
+            indices = np.array(df.loc[df[label] == str(l)].index)
+            c = len(indices)
+            np.random.shuffle(indices)
+            fti, sti = int(train_size*c), int((train_size+val_size)*c)
+            train_idx, val_idx, test_idx = indices[:fti], indices[fti: sti], indices[sti:]
+            df.loc[train_idx, 'split'] = 1
+            df.loc[val_idx, 'split'] = 2
+            df.loc[test_idx, 'split'] = 3
+        return df.loc[df['split'] == 1][['filename', 'class']], df.loc[df['split'] == 2][['filename', 'class']], df.loc[df['split'] == 3][['filename', 'class']]
