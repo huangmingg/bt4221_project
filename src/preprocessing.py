@@ -2,17 +2,34 @@ from typing import Tuple
 import numpy as np
 import os
 import pandas as pd
+from imblearn.under_sampling import RandomUnderSampler 
 
 
-def parse_input_file(df_filepath: os.path, img_directory: os.path) -> pd.DataFrame:
+def parse_input_file(df_filepath: os.path, img_directory: os.path, label_filepath: os.path) -> pd.DataFrame:
     df = pd.read_table(df_filepath, skiprows=1, delim_whitespace=True)
+    label_classes = pd.read_csv(label_filepath)
     df['image_name'] = df['image_name'].apply(lambda x: os.path.join(img_directory, x.split('/')[1], x.split('/')[2]))
     df.columns = ['filename', 'class']
-    df['class'] = df['class'].astype(str)
+    df = df.merge(label_classes, on='class', how='left')
     return df
 
 
-def train_val_test_split(df: pd.DataFrame, label: str='class', val_size: float=0.2, test_size: float=0.2, stratify: bool=True) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def transform_df(df: pd.DataFrame, use_coarse: bool = True, random_state: int=4221) -> pd.DataFrame:
+    class_to_use = 'class' if not use_coarse else 'coarse_class'
+    df[class_to_use] = df[class_to_use].astype(str)
+    df = df[['filename', class_to_use]]
+    rus = RandomUnderSampler(sampling_strategy='not minority', random_state=random_state)
+    x_res, y_res = rus.fit_resample(df['filename'].values.reshape(-1, 1), df[class_to_use].values)
+    x = pd.DataFrame(x_res, columns=['filename'])       
+    y = pd.DataFrame(y_res, columns=[class_to_use])
+    df = x.join(y)
+    df.columns = ['filename', 'class']    
+    return df
+
+
+def train_val_test_split(df: pd.DataFrame, label: str='class', val_size: float=0.2, test_size: float=0.2, 
+    stratify: bool=True, random_state: int=4221) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    np.random.seed(random_state)
     if val_size + test_size >= 1:
         print("invalid parameters")
         return
