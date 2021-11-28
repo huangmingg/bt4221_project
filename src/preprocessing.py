@@ -3,6 +3,7 @@ import numpy as np
 import os
 import pandas as pd
 from imblearn.under_sampling import RandomUnderSampler 
+from imblearn.over_sampling import SMOTE
 
 
 def parse_input_file(df_filepath: os.path, img_directory: os.path, label_filepath: os.path) -> pd.DataFrame:
@@ -14,12 +15,21 @@ def parse_input_file(df_filepath: os.path, img_directory: os.path, label_filepat
     return df
 
 
-def transform_df(df: pd.DataFrame, use_coarse: bool = True, random_state: int=4221) -> pd.DataFrame:
+def transform_df(df: pd.DataFrame, use_coarse: bool = True, sampling_strategy: str = None, random_state: int=4221) -> pd.DataFrame:
     class_to_use = 'class' if not use_coarse else 'coarse_class'
     df[class_to_use] = df[class_to_use].astype(str)
     df = df[['filename', class_to_use]]
-    rus = RandomUnderSampler(sampling_strategy='not minority', random_state=random_state)
-    x_res, y_res = rus.fit_resample(df['filename'].values.reshape(-1, 1), df[class_to_use].values)
+    if not sampling_strategy:
+        x_res, y_res = df['filename'].values.reshape(-1, 1), df[class_to_use].values
+    elif sampling_strategy == 'under':
+        rus = RandomUnderSampler(sampling_strategy='not minority', random_state=random_state)
+        x_res, y_res = rus.fit_resample(df['filename'].values.reshape(-1, 1), df[class_to_use].values)
+    elif sampling_strategy == 'over':
+        smote = SMOTE(sampling_strategy='not majority', random_state=random_state)
+        x_res, y_res = smote.fit_resample(df['filename'].values.reshape(-1, 1), df[class_to_use].values)
+    else:
+        print(f'sampling strategy {sampling_strategy} invalid')
+        return pd.DataFrame()
     x = pd.DataFrame(x_res, columns=['filename'])       
     y = pd.DataFrame(y_res, columns=[class_to_use])
     df = x.join(y)

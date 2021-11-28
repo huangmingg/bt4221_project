@@ -1,0 +1,13 @@
+tensorflow==2.7.0
+keras==2.7.0
+pandas==1.1.5
+numpy==1.19.5
+numexpr==2.7.0
+matplotlib==3.4.3
+notebook==6.4.5
+seaborn==0.11.2
+sklearn==0.0
+wrapt==1.13.3
+scikit-learn==1.0.1
+imbalanced-learn==0.7.0
+scipy==1.4.1
